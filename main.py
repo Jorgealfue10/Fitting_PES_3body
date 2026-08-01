@@ -78,3 +78,15 @@ def run_fit(
         )
 
     return result
+
+def read_output(file):
+    with open(file) as f:
+        lines = f.readlines()
+
+    return {
+        "iterations": parse_iterations(lines),
+        "residuals": parse_residuals(lines),
+        "summary": parse_summary(lines),
+        "vex": parse_vex(lines)
+    }
+
