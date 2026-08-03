@@ -90,7 +90,6 @@ def read_output(file):
         "vex": parse_vex(lines)
     }
 
-
 def parse_iterations(lines: list[str]):
     rows = [] ; reading = False
 
