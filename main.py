@@ -90,3 +90,116 @@ def read_output(file):
         "vex": parse_vex(lines)
     }
 
+
+def parse_iterations(lines: list[str]):
+    rows = [] ; reading = False
+
+    for line in lines: 
+        if ("iteration" in  line and "rms(u.a.)" in line and "Emax(kcal/mol)" in line):
+            reading = True
+            continue
+        if not reading:
+            continue
+        if "v-inp" in line and "v-fit" in line:
+            break
+
+        values = line.split()
+
+        if len(values) != 6:
+            continue
+
+        try: 
+            iteration = int(values[0])
+            numeric_values = [
+                float(value.replace("D","E").replace("d","e"))
+                for value in values[1:]
+            ]
+        except ValueError:
+            continue
+
+        rows.append([iteration,*numeric_values])
+
+    if not rows:
+        raise ValueError("No iterations found in output")
+
+    return pd.DataFrame(
+        rows,
+        columns=[
+            "iteration","vex1","vex2",
+            "rms_au","rms_kcal","emax_kcal"
+        ]
+    )
+
+def parse_residuals(lines: list[str]):
+    rows = [] ; reading = False
+
+    for line in lines:
+        if ("v-inp" in line and "v-fit" in line and "diff(u.a.)" in line):
+            reading = True
+            continue
+        if not reading:
+            continue
+        if "n effectif=" in line: 
+            break
+
+        values = line.split()
+
+        if len(values) != 7:
+            continue
+
+        try:
+            numeric_values = [
+                float(value.replace("D", "E").replace("d", "e"))
+                for value in values
+            ]
+        except ValueError:
+            continue
+
+        rows.append(numeric_values)
+
+    if not rows:
+        raise ValueError("Not residuals found")
+
+    return pd.DataFrame(
+        rows,
+        columns=[
+            "r12","r13","r23",
+            "v_inp","v_fit",
+            "diff_au","diff_kcal"
+        ]
+    )
+
+def parse_summary(lines: list[str]) -> dict[str, float]:
+    summary = {}
+
+    for line in lines:
+        if line.strip().startswith("n effectif="):
+            values = line.split()
+            summary["neff"] = int(values[-1])
+        if line.strip().startswith("RMS="):
+            values = line.replace("D", "E").split()
+
+            summary["rms_au"] = float(values[-5])
+            summary["rms_kcal"] = float(values[-2])
+
+        elif line.strip().startswith("Emax"):
+            values = line.replace("D", "E").split()
+
+            summary["emax_kcal"] = float(values[2])
+
+    required = {"neff","rms_au", "rms_kcal", "emax_kcal"}
+
+    if summary.keys() < required:
+        raise ValueError("No se pudo leer el summary completo.")
+
+    return summary
+
+def parse_vex(lines: list[str]): 
+    vexvals = [] 
+    line = lines[-1]
+    if line.strip().startswith("vex1(1)="):
+        values = line.split()
+        vexvals.append(values[1])
+        vexvals.append(values[-1])
+    return vexvals
+
